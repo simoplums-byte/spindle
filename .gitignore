@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+.AppleDouble
+._*
+
+# SwiftPM / 构建产物
+.build/
+.swiftpm/
+Package.resolved
+DerivedData/
+*.o
+*.dSYM/
+*.log
+
+# 本地打包产物（.app 不入库，由脚本重建）
+dist/
+*.app
+
+# 本地备份与并行工作树（若引入）
+backups/
+worktrees/
