@@ -21,10 +21,11 @@
 ## 项目边界
 
 - 产品定位：桌面装饰性的 CD 播放器，唯一的职责是把外部音乐播放器的"是否在出声"翻译成碟片转/停。定位与非目标以 `docs/PROJECT-CONTEXT.md`「产品定位」「非目标」为单一来源。
-- **只读原则**：Spindle 绝不调用第三方播放器的控制接口（不播放、不暂停、不切歌、不调音量），也不写入其状态文件。检测链路只能读。
+- **默认只读，一个显式例外**：检测链路只能读。唯一允许写播放器的地方是 Apple Music 的播放/暂停/上一曲/下一曲，且必须由用户显式点击（机身按键或菜单栏）触发；不得自动调用、不得调音量、不得读歌单、不得写任何播放器状态文件、不得拉起未运行的播放器。
 - **无网络原则**：运行时零网络请求。曲名、封面等元数据只允许来自本机已运行的播放器或其本地缓存；不向任何在线服务补全。
 - 技术栈：Swift 6 + SwiftPM，AppKit 管窗口、SwiftUI 负责绘制，见 `ADR-0002`。
 - 唯一播放状态来源：`PlaybackDetecting` 协议背后的 Provider 集合，见 `ADR-0001`。不得在 UI 层直接调用 CoreAudio、AppleScript 或 MediaRemote。
+- 控制命令同样不进 UI 层：走 `PlaybackControlling`（当前只有 `MusicController`），UI 只发命令、只消费快照。
 - 明确非目标：见 `docs/PROJECT-CONTEXT.md`「非目标」；不得以"顺手实现"为由扩大范围。
 
 ## 播放检测硬规则
@@ -53,6 +54,8 @@
       ./scripts/build-app.sh --install        # 另装到 ~/Applications/Spindle.app（不动 /Applications）
       open dist/Spindle.app                   # 启动：窗口 344×344、layer=3 浮动、无 Dock 图标
       .build/release/Spindle --render <path>  # 渲染评审图，688×688，不依赖屏幕截图
+      .build/release/Spindle --control toggle # 走同一控制通道发命令（previous/toggle/next），用于无 UI 验证
+      .build/release/Spindle --status         # 打印 4 轮采样结果（状态 / 来源 / LCD 行），排查来源判定
 
 - 检测链路尚未接入，因此"播放 → 暂停 → 退出播放器"的三态回归**尚未验证**，接入后必须补跑。
 - 人工验场景：碟片旋转无频闪、暂停 2.2s 内停住且角度不回位、点击按键无视觉反馈、切换 Space 后窗口不移动。

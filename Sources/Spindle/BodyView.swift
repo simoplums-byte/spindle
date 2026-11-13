@@ -17,12 +17,38 @@ struct RootView: View {
 // MARK: - 拖动宿主
 
 /// SwiftUI 的宿主视图默认吃掉鼠标事件，窗口就拖不动。
-/// 这里把按下事件直接交给窗口去做拖动。
+/// 这里把按下事件直接交给窗口去做拖动；但落在机身按键热区内的点击要交出去，
+/// 否则按键永远收不到点击（见 visual-spec §6）。
 final class DraggableHostingView<Content: View>: NSHostingView<Content> {
+    /// 按键命中回调；为 nil 时按键区域等同机身，仍然可以拖动窗口。
+    var onKeyCommand: ((PlaybackCommand) -> Void)?
+
     override var mouseDownCanMoveWindow: Bool { true }
 
     override func mouseDown(with event: NSEvent) {
+        if let index = keyIndex(at: convert(event.locationInWindow, from: nil)),
+           let onKeyCommand {
+            onKeyCommand(PlaybackCommand.keyOrder[index])
+            return
+        }
         window?.performDrag(with: event)
+    }
+
+    /// 命中判定用 Ø keyHitDiameter 的圆，圆心与可见键帽同心。
+    /// 视图坐标原点在左下角，而 Token 的坐标以左上角为原点，这里做一次翻转。
+    private func keyIndex(at point: CGPoint) -> Int? {
+        let inset = (Token.windowSize - Token.bodySize) / 2
+        let radius = Token.keyHitDiameter / 2
+        // NSHostingView 是否翻转坐标系随版本而变，这里两种都算对
+        let topDownY = inset + Token.keyY
+        let centerY = isFlipped ? topDownY : bounds.height - topDownY
+        for (index, centerX) in Token.keyCentersX.enumerated() {
+            let center = CGPoint(x: inset + centerX, y: centerY)
+            if hypot(point.x - center.x, point.y - center.y) <= radius {
+                return index
+            }
+        }
+        return nil
     }
 }
 
@@ -142,9 +168,11 @@ struct BodyView: View {
             .offset(centeredOffset(Token.lidPlateDiameter))
     }
 
-    // MARK: 按键（完全静态，无按压态）
+    // MARK: 按键（可点击，但无按压态）
 
     private var keys: some View {
+        // 只有视觉：键帽是静态的，点击由 DraggableHostingView 命中热区后派发，
+        // 按下去没有任何视觉反馈（visual-spec §6）。
         ForEach(Array(Token.keyCentersX.enumerated()), id: \.offset) { _, centerX in
             Circle()
                 .fill(LinearGradient(

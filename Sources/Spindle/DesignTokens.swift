@@ -230,6 +230,8 @@ enum Token {
     static let lcdTextWidth: CGFloat = 150
 
     static let keyDiameter: CGFloat = 22
+    /// 命中热区：可见仍是 Ø22，点击判定用 Ø38（见 visual-spec §6）
+    static let keyHitDiameter: CGFloat = 38
     static let keyY: CGFloat = 272
     static let keyCentersX: [CGFloat] = [216, 248, 280]
 

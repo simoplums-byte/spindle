@@ -15,6 +15,7 @@ final class PlaybackMonitor: ObservableObject {
     private var pendingCount = 0
     private var lastMusicQuery = Date.distantPast
     private var lastArtworkKey: String?
+    private var forceNextSample = false
 
     private let sampleInterval: TimeInterval = 1.0
     private let metadataInterval: TimeInterval = 2.0
@@ -22,13 +23,9 @@ final class PlaybackMonitor: ObservableObject {
     private let artworkURL = FileManager.default.temporaryDirectory
         .appendingPathComponent("spindle-artwork.bin")
 
-    private static let whitelist: [String: PlaybackSource] = [
-        "com.netease.163music": .netease,
-        "com.spotify.client": .spotify,
-        "com.apple.Music": .music,
-        "com.apple.iTunes": .music,
-        "com.electron.yesplaymusic": .other
-    ]
+    /// 只在"没有任何进程在出声"时用来判断谁还开着。顺序固定，避免字典顺序随机
+    /// 导致来源在 Apple Music 暂停时跳成别的播放器（那会让控制键失效）。
+    private static let playerOrder: [PlaybackSource] = [.music, .spotify, .netease, .other]
 
     // MARK: 生命周期
 
@@ -61,7 +58,7 @@ final class PlaybackMonitor: ObservableObject {
         if let process = activeSource, let s = PlaybackMonitor.source(forPath: process.execPath) {
             raw = .playing
             source = s
-        } else if let running = PlaybackMonitor.runningPlayer() {
+        } else if let running = PlaybackMonitor.runningPlayer(preferring: nowPlaying.source) {
             raw = .paused
             source = running
         } else {
@@ -72,8 +69,24 @@ final class PlaybackMonitor: ObservableObject {
         apply(raw: raw, source: source)
     }
 
+    /// 诊断用：打印几轮采样结果（`--status`）。
+    func debugSnapshot() -> (PlaybackStatus, PlaybackSource, String) {
+        (nowPlaying.status, nowPlaying.source, nowPlaying.lcdLine)
+    }
+
+    /// 用户刚按过按键：立刻重采一次，跳过这一轮去抖动，
+    /// 否则最长要等两个采样周期才看到碟片响应，手感像没按到。
+    func refreshNow() {
+        lastMusicQuery = .distantPast
+        forceNextSample = true
+        sample()
+    }
+
     /// 两次同向才认，避免切歌时的一秒空档把碟片刹停。
     private func apply(raw: PlaybackStatus, source: PlaybackSource) {
+        let forced = forceNextSample
+        forceNextSample = false
+
         if nowPlaying.status == raw {
             pending = nil
             pendingCount = 0
@@ -92,8 +105,16 @@ final class PlaybackMonitor: ObservableObject {
             pendingCount = 1
         }
 
-        guard pendingCount >= 2 else { return }
+        if forced {
+            commit(raw: raw, source: source)
+            return
+        }
 
+        guard pendingCount >= 2 else { return }
+        commit(raw: raw, source: source)
+    }
+
+    private func commit(raw: PlaybackStatus, source: PlaybackSource) {
         pending = nil
         pendingCount = 0
         nowPlaying.status = raw
@@ -162,12 +183,26 @@ final class PlaybackMonitor: ObservableObject {
     }
 
     /// 只认音乐播放器，浏览器不算——Chrome 常年开着，否则永远进不了待机。
-    private static func runningPlayer() -> PlaybackSource? {
+    /// 优先沿用上一次确认的来源：暂停 Apple Music 时没有任何进程在出声，
+    /// 若这时候随便挑一个开着的播放器，来源会跳成网易云，控制就成了「点了没反应」。
+    private static func runningPlayer(preferring preferred: PlaybackSource) -> PlaybackSource? {
         let apps = NSWorkspace.shared.runningApplications
-        for (bundleID, source) in whitelist
-        where apps.contains(where: { $0.bundleIdentifier == bundleID }) {
-            return source
+        func isRunning(_ source: PlaybackSource) -> Bool {
+            bundleIdentifiers(for: source).contains { id in
+                apps.contains { $0.bundleIdentifier == id }
+            }
         }
-        return nil
+        if preferred != .none, isRunning(preferred) { return preferred }
+        return playerOrder.first(where: isRunning)
+    }
+
+    private static func bundleIdentifiers(for source: PlaybackSource) -> [String] {
+        switch source {
+        case .music: return ["com.apple.Music", "com.apple.iTunes"]
+        case .spotify: return ["com.spotify.client"]
+        case .netease: return ["com.netease.163music"]
+        case .other: return ["com.electron.yesplaymusic"]
+        case .browser, .none: return []
+        }
     }
 }

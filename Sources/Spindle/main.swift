@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var statusMenuItem: NSMenuItem?
     private var discMenu: NSMenu?
+    private var controlItems: [NSMenuItem] = []
     private var lastIconStatus: PlaybackStatus = .unknown
     private let rotation = RotationModel()
     private let monitor = PlaybackMonitor()
@@ -45,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
 
-        panel.contentView = DraggableHostingView(rootView: RootView(rotation: rotation, monitor: monitor))
+        panel.contentView = makeHostingView()
 
         // 跟随鼠标所在的那块屏幕，而不是「焦点屏」——多显示器下焦点常在另一块上
         let pointer = NSEvent.mouseLocation
@@ -75,6 +76,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusLine.isEnabled = false
         menu.addItem(statusLine)
         statusMenuItem = statusLine
+
+        for (title, action) in [
+            ("上一曲", #selector(controlPrevious)),
+            ("播放 / 暂停", #selector(controlToggle)),
+            ("下一曲", #selector(controlNext))
+        ] {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            item.isEnabled = false
+            menu.addItem(item)
+            controlItems.append(item)
+        }
 
         let rescan = NSMenuItem(title: "重新采样", action: #selector(rescan), keyEquivalent: "r")
         rescan.target = self
@@ -128,6 +141,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RunLoop.main.add(t, forMode: .common)
     }
 
+    // MARK: 控制（唯一允许写播放器的地方，且只能由用户点击触发）
+
+    private func makeHostingView() -> DraggableHostingView<RootView> {
+        let host = DraggableHostingView(rootView: RootView(rotation: rotation, monitor: monitor))
+        host.onKeyCommand = { [weak self] command in
+            self?.handleCommand(command)
+        }
+        return host
+    }
+
+    /// 三个按键 + 菜单栏三项都走这里。非 Apple Music 工况直接返回，什么都不发生。
+    private func handleCommand(_ command: PlaybackCommand) {
+        guard monitor.nowPlaying.source == .music else { return }
+        MusicController.perform(command) { [weak self] in
+            self?.monitor.refreshNow()
+        }
+    }
+
+    @objc private func controlPrevious() { handleCommand(.previous) }
+    @objc private func controlToggle() { handleCommand(.toggle) }
+    @objc private func controlNext() { handleCommand(.next) }
+
     @objc private func selectIconStyle(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String,
               let style = StatusIconStyle(rawValue: raw) else { return }
@@ -146,6 +181,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .unknown: label = "检测中…"
         }
         statusMenuItem?.title = "\(label) · \(state.lcdLine)"
+
+        let controlsAvailable = state.source == .music && MusicController.isMusicRunning
+        for item in controlItems where item.isEnabled != controlsAvailable {
+            item.isEnabled = controlsAvailable
+        }
 
         if state.status != lastIconStatus {
             lastIconStatus = state.status
@@ -197,9 +237,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// 皮肤与碟面都是全局静态值，SwiftUI 不会自己重绘，重建一次宿主视图即可
     private func reloadContent() {
-        panel?.contentView = DraggableHostingView(
-            rootView: RootView(rotation: rotation, monitor: monitor)
-        )
+        panel?.contentView = makeHostingView()
         panel?.orderFrontRegardless()
     }
 
@@ -282,6 +320,29 @@ MainActor.assumeIsolated {
        arguments.count > discIndex + 1,
        let disc = DiscStyle(rawValue: arguments[discIndex + 1]) {
         DiscToken.select(disc)
+    }
+
+    if let controlIndex = arguments.firstIndex(of: "--control") {
+        let raw = arguments.count > controlIndex + 1 ? arguments[controlIndex + 1] : ""
+        guard let command = PlaybackCommand(rawValue: raw) else {
+            FileHandle.standardError.write("usage: --control previous|toggle|next\n".data(using: .utf8)!)
+            exit(2)
+        }
+        let ok = MusicController.execute(command)
+        print(ok ? "ok \(command.rawValue)" : "failed \(command.rawValue)")
+        exit(ok ? 0 : 1)
+    }
+
+    if arguments.contains("--status") {
+        let monitor = PlaybackMonitor()
+        for _ in 0..<4 {
+            // 不用 start()：它装的是 NSTimer，在 CLI 里跑 RunLoop 会撞上 actor 断言。
+            monitor.refreshNow()
+            RunLoop.main.run(until: Date().addingTimeInterval(1))
+            let snapshot = monitor.debugSnapshot()
+            print("\(snapshot.0) \(snapshot.1.rawValue) | \(snapshot.2)")
+        }
+        exit(0)
     }
 
     if let iconsIndex = arguments.firstIndex(of: "--render-icons") {
