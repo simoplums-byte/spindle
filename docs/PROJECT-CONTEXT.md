@@ -1,7 +1,7 @@
 # Spindle · 项目背景
 
 > 稳定事实的单一来源。任务流水、临时实验和未定方案不写在这里。
-> Document updated at: 2026-11-13（working tree，仓库尚无提交）
+> Document updated at: 2026-11-13（初始提交 `800c7da` 之后的工作树）
 > Last verified against: 本机实测，见「技术栈与运行方式」中的环境事实与「播放检测能力矩阵」的证据列。
 
 ## 产品定位
