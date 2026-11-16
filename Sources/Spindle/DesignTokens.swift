@@ -336,7 +336,7 @@ enum Token {
 
     // MARK: 动效
 
-    static let discRevolution: Double = 5.4   // 秒 / 圈
+    static let discRevolution: Double = 8.0   // 秒 / 圈
     static let spinUpDuration: Double = 0.8
     static let spinDownDuration: Double = 2.2
     static let marqueeSpeed: Double = 34      // pt/s

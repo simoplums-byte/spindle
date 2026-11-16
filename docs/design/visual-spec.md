@@ -1,7 +1,7 @@
 # Spindle 视觉规格
 
 > 视觉与 token 的唯一来源。实现与本文冲突时以本文为准；要改外观，先改这里。
-> 状态：v1.11（2026-11-16；改动见 §15）
+> 状态：v1.12（2026-11-16；改动见 §15）
 > 已确认：香槟银机身 / LCD 带曲名跑马灯 / 无封面时用 SPINDLE 丝印碟面 / 有封面时默认用专辑封面碟面 / 按键可操作（仅 Apple Music），按压无视觉反馈
 
 ## 1. 定调
@@ -105,7 +105,7 @@
 
 | 检测状态 | 碟片 | LCD | 时机 |
 | --- | --- | --- | --- |
-| `.playing` | 旋转，5.4s/圈 | 跑马灯 + 满背光 | 去抖动确认后 0.8s 内加速到全速 |
+| `.playing` | 旋转，8.0s/圈 | 跑马灯 + 满背光 | 去抖动确认后 0.8s 内加速到全速 |
 | `.paused` | 从当前角速度惯性减速，2.2s 内停住，停在当前角度 | `PAUSE` | 立即 |
 | `.idle` | 静止（若从播放转入则先减速） | `STANDBY` @35% 背光 | 减速完成后 0.2s |
 | `.unknown` | 保持 | 保持上一次 | 立即，不闪 |
@@ -116,7 +116,7 @@
 
 | Token | 值 | 说明 |
 | --- | --- | --- |
-| `discRevolution` | 5.4s / 圈 | 视觉转速约 11 rpm，快于真实 CD 的观感阈值以下，慢到能看清图案 |
+| `discRevolution` | 8.0s / 圈 | 视觉转速约 7.5 rpm；真实 CD 为 200–500 rpm，本盘刻意压慢，慢到能看清图案 |
 | `spinUpDuration` | 0.8s | easeOut，从 0 加速到全速 |
 | `spinDownDuration` | 2.2s | easeIn，角速度线性衰减到 0 |
 | `marqueeSpeed` | 34 pt/s | 匀速 |
@@ -302,6 +302,10 @@
 `scripts/build-app.sh` 每次构建都会重渲染 `AppIcon.iconset` 并用 `iconutil` 打成 `Contents/Resources/AppIcon.icns`，`Info.plist` 里 `CFBundleIconFile = AppIcon`。改配色只需改 `AppIconScheme`（或改默认值），不需要手工准备图片。
 
 ## 15. 变更记录
+
+### v1.12（2026-11-16，转速放慢）
+
+- `discRevolution` 从 5.4s/圈（11 rpm）改为 8.0s/圈（7.5 rpm）；加速 0.8s、减速 2.2s 不变。
 
 ### v1.11（2026-11-16，开机启动）
 
