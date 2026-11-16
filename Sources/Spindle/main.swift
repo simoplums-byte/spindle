@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusMenuItem: NSMenuItem?
     private var discMenu: NSMenu?
     private var controlItems: [NSMenuItem] = []
+    private var loginItem: NSMenuItem?
     private var lastIconStatus: PlaybackStatus = .unknown
     private let rotation = RotationModel()
     private let monitor = PlaybackMonitor()
@@ -123,6 +124,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         iconsItem.submenu = iconsMenu
         menu.addItem(iconsItem)
 
+        let loginItem = NSMenuItem(title: "开机启动", action: #selector(toggleLoginItem), keyEquivalent: "")
+        loginItem.target = self
+        menu.addItem(loginItem)
+        self.loginItem = loginItem
+
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "退出 Spindle", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
@@ -159,6 +165,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func toggleLoginItem() {
+        do {
+            if LoginItemController.isEnabled {
+                try LoginItemController.unregister()
+            } else {
+                try LoginItemController.register()
+            }
+        } catch {
+            // 注册被系统拒绝时不改勾选，下一轮刷新拉真实状态覆盖。
+        }
+        refreshLoginItemMenu()
+    }
+
+    private func refreshLoginItemMenu() {
+        loginItem?.state = LoginItemController.isEnabled ? .on : .off
+    }
+
     @objc private func controlPrevious() { handleCommand(.previous) }
     @objc private func controlToggle() { handleCommand(.toggle) }
     @objc private func controlNext() { handleCommand(.next) }
@@ -192,6 +215,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem?.button?.image = StatusIcon.make(status: state.status)
         }
         refreshDiscMenu()
+        refreshLoginItemMenu()
     }
 
     /// 「碟面」子菜单：`albumArt` 只在当前曲目拿得到封面时出现，勾选跟着实际生效的样式。
@@ -331,6 +355,24 @@ MainActor.assumeIsolated {
         let ok = MusicController.execute(command)
         print(ok ? "ok \(command.rawValue)" : "failed \(command.rawValue)")
         exit(ok ? 0 : 1)
+    }
+
+    if let loginIndex = arguments.firstIndex(of: "--login-item") {
+        let value = arguments.count > loginIndex + 1 ? arguments[loginIndex + 1] : "status"
+        switch value {
+        case "status":
+            print(LoginItemController.isEnabled ? "on" : "off")
+        case "on":
+            try? LoginItemController.register()
+            print(LoginItemController.isEnabled ? "on" : "off")
+        case "off":
+            try? LoginItemController.unregister()
+            print(LoginItemController.isEnabled ? "off" : "on")
+        default:
+            FileHandle.standardError.write("usage: --login-item status|on|off\n".data(using: .utf8)!)
+            exit(2)
+        }
+        exit(0)
     }
 
     if arguments.contains("--status") {

@@ -15,6 +15,7 @@ Spindle 是 Mac 桌面上的一台 CD 播放器摆件。它不播放音乐，只
 - 复古 Discman 外观，约 320pt，始终浮在所有窗口之上。
 - 主音乐源：网易云音乐（只能判断是否在播放）；Apple Music 作为精确通道补充。
 - 极简交互：机身三键与菜单栏三项只负责 Apple Music 的上一曲/播放暂停/下一曲，不做其他控制。
+- 开机自启：菜单栏「开机启动」勾选项，走系统登录项（`SMAppService`），默认关闭；不写 LaunchAgents、不申请额外权限。
 - 碟面：能拿到封面（目前只有 Apple Music）时默认印专辑封面，可在菜单栏切回六种自有碟面；拿不到封面时菜单里不出现「专辑封面」，碟面回落上次手选的自有样式（默认银色压模）。
 
 ## 技术栈与运行方式
@@ -29,7 +30,7 @@ Spindle 是 Mac 桌面上的一台 CD 播放器摆件。它不播放音乐，只
 | 已安装播放器 | `NeteaseMusic.app`、`Spotify.app`、`YesPlayMusic.app`（`/Applications`），Apple Music 为 `/System/Applications/Music.app` |
 | 未安装 | `nowplaying-cli`、`media-control`（`which` 无输出） |
 | 构建形态 | SwiftPM 可执行包，AppKit 管窗口 / SwiftUI 绘制，详见 ADR-0002 |
-| 运行方式 | 已建立并实测：`swift build -c release` → `./scripts/build-app.sh` → `open dist/Spindle.app`；`./scripts/build-app.sh --install` 另装一份到 `~/Applications/Spindle.app`；评审图用 `.build/release/Spindle --render <path>`（688×688）。启动后窗口 344×344、`layer=3` 浮动、无 Dock 图标 |
+| 运行方式 | 已建立并实测：`swift build -c release` → `./scripts/build-app.sh` → `open .build/Spindle.app`；`./scripts/build-app.sh --install` 另装一份到 `~/Applications/Spindle.app`；评审图用 `.build/release/Spindle --render <path>`（688×688）。启动后窗口 344×344、`layer=3` 浮动、无 Dock 图标 |
 
 关键入口：
 
@@ -37,7 +38,7 @@ Spindle 是 Mac 桌面上的一台 CD 播放器摆件。它不播放音乐，只
 - `Sources/Spindle/RotationModel.swift` — 角度累加与惯性停转。
 - `Sources/Spindle/BodyView.swift` — 机身、仓盖、碟片、LCD、按键、贴纸的绘制。
 - `Sources/Spindle/DesignTokens.swift` — 颜色、字号、圆角、间距、动效时长。
-- `scripts/build-app.sh` — SwiftPM 产物 → `dist/Spindle.app`；`--install` 额外覆盖安装到 `~/Applications/Spindle.app`（不碰 `/Applications`）。
+- `scripts/build-app.sh` — SwiftPM 产物 → `.build/Spindle.app`（中间产物，不进 dist）；`--install` 额外覆盖安装到 `~/Applications/Spindle.app`（不碰 `/Applications`）。
 
 ## 播放检测能力矩阵
 
@@ -141,6 +142,7 @@ Spindle 是 Mac 桌面上的一台 CD 播放器摆件。它不播放音乐，只
 - 2026-11-13：落地首个可运行骨架（`Sources/Spindle` + `scripts/build-app.sh`）：静态机身、碟片旋转与惯性停转、LCD 两态文案。`swift build -c release`、`--render` 渲染 688×688、`open dist/Spindle.app` 三项实测通过；窗口实测 `layer=3`、344×344、无 Dock 图标。检测尚未接入。
 - 2026-11-13：按用户确认的四项方向（香槟银 / LCD 曲名跑马灯 / 无封面用 SPINDLE 丝印碟面 / 按键完全静态）定稿 `docs/design/visual-spec.md` v1，并把暂停行为从"瞬时冻结"修正为"惯性减速后停在原角度"，同步 AGENTS 与 ADR-0002。
 - 2026-11-13：碟面新增「专辑封面」并设为有封面时的默认（`DiscStyle.albumArt` + `DiscToken.autoArtwork`），自有碟面手选后不被封面顶掉；拿不到封面的曲目菜单中不出现该项，并清掉旧封面避免残留。规格见 `visual-spec.md` v1.8，渲染实测通过，真机 Apple Music 工况未验证。
+- 2026-11-16：菜单栏新增「开机启动」勾选项，走 `SMAppService` 系统登录项，默认关闭；注册/注销与系统状态同步。规格见 `visual-spec.md` v1.11。
 - 2026-11-13：机身三键改为可操作（左 上一曲 / 中 播放暂停 / 右 下一曲），只对 Apple Music 生效，按压无视觉反馈；同时改写「只读原则」为「默认只读 + 一个显式例外」。规格见 `visual-spec.md` v1.10。
 - 2026-11-13：`build-app.sh` 增加 `--package`，出 `arm64+x86_64` 通用二进制的 `dist/Spindle-<版本>.zip`（含「首次打开必读」），供同事直接解压使用；签名仍为 ad-hoc，首次打开需右键或去隔离属性。
 - 2026-11-13：`build-app.sh` 增加 `--install`（覆盖安装到 `~/Applications`，供 Launchpad/聚焦找到）；退出运行中实例改用 `pgrep`+`kill`，`pkill` 在受限环境取不到进程列表。
