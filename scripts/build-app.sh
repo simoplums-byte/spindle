@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 把 SwiftPM 产物组装成可运行的 .app。
-# 用法：默认只出 dist/Spindle.app；--install 装到 ~/Applications；
-#      --package 出通用二进制（Intel + Apple 芯片）并打 zip，给同事直接解压即用。
+# 用法：中间产物 .app 落 .build/（隐藏构建目录，不被 Spotlight 索引进启动台）；
+#      --install 装到 ~/Applications；--package 出通用二进制并把 zip 放到 dist/。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -18,7 +18,7 @@ for arg in "$@"; do
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
-APP="$ROOT/dist/Spindle.app"
+APP="$ROOT/.build/Spindle.app"
 # 安装副本放用户目录，不碰 /Applications（见 AGENTS「行动与授权」）
 DEST="$HOME/Applications/Spindle.app"
 
@@ -108,7 +108,7 @@ Spindle 首次打开必读
 4. 第一次放 Apple Music 时，系统会问"Spindle 想控制 音乐"，点「允许」。
    允许后才能读到曲名与封面；拒绝也能用，只是没有歌名和封面。
 5. 需要 macOS 14 或更新；Intel 与 Apple 芯片（M 系列）都可以。
-6. 它不联网，也不控制播放器——只读取"是否在出声"，用来驱动碟片转/停。
+6. 它不联网；除机身按键和菜单栏的上一曲 / 播放暂停 / 下一曲（仅 Apple Music）外，不控制播放器。
 7. 只支持 Apple Music 的歌名与封面；网易云、Spotify 目前只有转/停状态。
 TXT
 

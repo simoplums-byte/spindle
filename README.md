@@ -10,8 +10,8 @@ v0.2 · **播放检测已接入**。香槟银机身、仓盖、碟片、蓝色 L
 
 ```
 swift build -c release          # 编译
-./scripts/build-app.sh          # 组装 dist/Spindle.app
-open dist/Spindle.app           # 启动（无 Dock 图标，菜单栏有退出入口）
+./scripts/build-app.sh          # 组装 .build/Spindle.app
+open .build/Spindle.app         # 启动（无 Dock 图标，菜单栏有退出入口）
 
 # 想让它出现在 Launchpad / 聚焦搜索里：装一份到 ~/Applications（不碰 /Applications）
 ./scripts/build-app.sh --install
