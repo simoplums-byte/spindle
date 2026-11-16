@@ -30,7 +30,7 @@ Spindle 是 Mac 桌面上的一台 CD 播放器摆件。它不播放音乐，只
 | 已安装播放器 | `NeteaseMusic.app`、`Spotify.app`、`YesPlayMusic.app`（`/Applications`），Apple Music 为 `/System/Applications/Music.app` |
 | 未安装 | `nowplaying-cli`、`media-control`（`which` 无输出） |
 | 构建形态 | SwiftPM 可执行包，AppKit 管窗口 / SwiftUI 绘制，详见 ADR-0002 |
-| 运行方式 | 已建立并实测：`swift build -c release` → `./scripts/build-app.sh` → `open .build/Spindle.app`；`./scripts/build-app.sh --install` 另装一份到 `~/Applications/Spindle.app`；评审图用 `.build/release/Spindle --render <path>`（688×688）。启动后窗口 344×344、`layer=3` 浮动、无 Dock 图标 |
+| 运行方式 | 已建立并实测：`swift build -c release` → `./scripts/build-app.sh --install` 装到 `~/Applications/Spindle.app` 后 `open`；评审图用 `.build/release/Spindle --render <path>`（688×688）。启动后窗口 344×344、`layer=3` 浮动、无 Dock 图标 |
 
 关键入口：
 
@@ -38,7 +38,7 @@ Spindle 是 Mac 桌面上的一台 CD 播放器摆件。它不播放音乐，只
 - `Sources/Spindle/RotationModel.swift` — 角度累加与惯性停转。
 - `Sources/Spindle/BodyView.swift` — 机身、仓盖、碟片、LCD、按键、贴纸的绘制。
 - `Sources/Spindle/DesignTokens.swift` — 颜色、字号、圆角、间距、动效时长。
-- `scripts/build-app.sh` — SwiftPM 产物 → `.build/Spindle.app`（中间产物，不进 dist）；`--install` 额外覆盖安装到 `~/Applications/Spindle.app`（不碰 `/Applications`）。
+- `scripts/build-app.sh` — SwiftPM 产物 → TMPDIR 下临时 `.app`（不被 Spotlight 索引，不进 dist）；`--install` 额外覆盖安装到 `~/Applications/Spindle.app`（不碰 `/Applications`）。
 
 ## 播放检测能力矩阵
 

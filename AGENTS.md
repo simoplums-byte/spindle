@@ -50,9 +50,9 @@
 - 已跑通（2026-11-13，macOS 27.0.1 / Swift 6.4.2 实测）：
 
       swift build -c release                  # 编译
-      ./scripts/build-app.sh                  # 组装 .build/Spindle.app（Info.plist 含 LSUIElement）
+      ./scripts/build-app.sh                  # 组装临时 .app（TMPDIR，Info.plist 含 LSUIElement）
       ./scripts/build-app.sh --install        # 另装到 ~/Applications/Spindle.app（不动 /Applications）
-      open .build/Spindle.app                # 启动：窗口 344×344、layer=3 浮动、无 Dock 图标
+      open ~/Applications/Spindle.app         # 启动（--install 后）：窗口 344×344、layer=3 浮动、无 Dock 图标
       .build/release/Spindle --render <path>  # 渲染评审图，688×688，不依赖屏幕截图
       .build/release/Spindle --control toggle # 走同一控制通道发命令（previous/toggle/next），用于无 UI 验证
       .build/release/Spindle --status         # 打印 4 轮采样结果（状态 / 来源 / LCD 行），排查来源判定

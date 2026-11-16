@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 把 SwiftPM 产物组装成可运行的 .app。
-# 用法：中间产物 .app 落 .build/（隐藏构建目录，不被 Spotlight 索引进启动台）；
+# 用法：中间产物 .app 落 TMPDIR（Spotlight 不索引临时目录，避免出现在聚焦搜索里）；
 #      --install 装到 ~/Applications；--package 出通用二进制并把 zip 放到 dist/。
 set -euo pipefail
 
@@ -18,7 +18,7 @@ for arg in "$@"; do
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
-APP="$ROOT/.build/Spindle.app"
+APP="${TMPDIR:-/tmp}/spindle-build/Spindle.app"
 # 安装副本放用户目录，不碰 /Applications（见 AGENTS「行动与授权」）
 DEST="$HOME/Applications/Spindle.app"
 
